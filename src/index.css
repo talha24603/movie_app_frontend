@@ -1,0 +1,112 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+/* Design tokens. One dark cinematic palette shared by the catalog and the dashboard. */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-ink-950: #08080b;
+  --color-ink-900: #0d0d12;
+  --color-ink-850: #121219;
+  --color-ink-800: #17171f;
+  --color-ink-700: #20202b;
+  --color-ink-600: #2c2c39;
+  --color-ink-500: #3d3d4d;
+
+  --color-fg: #f4f4f6;
+  --color-fg-muted: #a6a6b4;
+  --color-fg-subtle: #74748a;
+
+  --color-brand-400: #fb5a7a;
+  --color-brand-500: #f43f5e;
+  --color-brand-600: #e11d48;
+  --color-brand-700: #be123c;
+
+  --color-gold: #fbbf24;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+
+  --radius-card: 0.75rem;
+  --shadow-card: 0 10px 30px -12px rgb(0 0 0 / 0.7);
+
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-ink-950 text-fg font-sans;
+    min-height: 100dvh;
+  }
+  ::selection {
+    @apply bg-brand-600/60 text-white;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-400;
+  }
+  /* Native <dialog> backdrop */
+  dialog::backdrop {
+    background: rgb(4 4 8 / 0.72);
+  }
+}
+
+@layer components {
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-ink-800) 25%, var(--color-ink-700) 37%, var(--color-ink-800) 63%);
+    background-size: 400% 100%;
+    @apply animate-shimmer;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-600) transparent;
+  }
+  /* Range input used by the video player */
+  .range {
+    @apply appearance-none bg-transparent cursor-pointer;
+  }
+  .range::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: transparent;
+  }
+  .range::-webkit-slider-thumb {
+    @apply appearance-none h-3.5 w-3.5 rounded-full bg-white -mt-[5px] shadow;
+  }
+  .range::-moz-range-thumb {
+    @apply h-3.5 w-3.5 rounded-full bg-white border-0;
+  }
+  .range::-moz-range-track {
+    height: 4px;
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Captions rendered by the native <track> pipeline */
+video::cue {
+  background: rgb(0 0 0 / 0.72);
+  color: #fff;
+  font-family: var(--font-sans);
+}
