@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, Search, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Eye, EyeOff, Pencil, Search, Trash2 } from 'lucide-react'
 import { adminApi } from '@/api/admin'
 import { useFacets, useMovies } from '@/hooks/queries'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -48,6 +48,7 @@ export function MoviesPage() {
   const source = params.get('source') ?? ''
   const category = params.get('category') ?? ''
   const stream = params.get('stream') ?? ''
+  const status = params.get('status') ?? ''
 
   const [searchInput, setSearchInput] = useState(params.get('search') ?? '')
   const search = useDebouncedValue(searchInput.trim(), 350)
@@ -81,6 +82,7 @@ export function MoviesPage() {
     source: source || undefined,
     category: category || undefined,
     has_stream: stream === 'yes' ? true : stream === 'no' ? false : undefined,
+    status: status === 'active' || status === 'inactive' ? status : 'all',
   })
 
   const [toDelete, setToDelete] = useState<Movie | null>(null)
@@ -92,6 +94,16 @@ export function MoviesPage() {
       qc.invalidateQueries({ queryKey: ['movies'] })
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
+  })
+
+  const toggle = useMutation({
+    mutationFn: (m: Movie) => adminApi.setMovieActive(m.tmdb_id, !m.is_active),
+    onSuccess: (m) => {
+      toast.success(`“${m.title}” is now ${m.is_active ? 'active' : 'inactive'}.`)
+      qc.invalidateQueries({ queryKey: ['movies'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
+    onError: (e) => toast.error(errorMessage(e)),
   })
 
   const onSort = (f: MovieSortField) => {
@@ -132,6 +144,11 @@ export function MoviesPage() {
             <option value="yes">Has stream</option>
             <option value="no">No stream</option>
           </Select>
+          <Select aria-label="Filter by status" value={status} onChange={(e) => update({ status: e.target.value })} className="w-auto">
+            <option value="">Any status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </Select>
         </div>
         {movies.isFetching && !movies.isPending ? <Spinner className="h-4 w-4 text-fg-muted" label="Updating" /> : null}
       </div>
@@ -141,7 +158,7 @@ export function MoviesPage() {
       ) : (
         <div className="overflow-hidden rounded-card border border-ink-700 bg-ink-900">
           <div className="scrollbar-thin overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[940px] text-left text-sm">
               <thead className="border-b border-ink-700 bg-ink-850 text-xs uppercase tracking-wider text-fg-subtle">
                 <tr>
                   <SortHeader field="title" label="Title" sort={sort} order={order} onSort={onSort} className="pl-4" />
@@ -149,6 +166,7 @@ export function MoviesPage() {
                   <SortHeader field="year" label="Year" sort={sort} order={order} onSort={onSort} />
                   <SortHeader field="rating" label="Rating" sort={sort} order={order} onSort={onSort} />
                   <th scope="col" className="px-3 py-3 font-medium">Stream</th>
+                  <th scope="col" className="px-3 py-3 font-medium">Status</th>
                   <SortHeader field="scraped_at" label="Added" sort={sort} order={order} onSort={onSort} />
                   <SortHeader field="updated_at" label="Updated" sort={sort} order={order} onSort={onSort} />
                   <th scope="col" className="px-3 py-3 pr-4 text-right font-medium">
@@ -160,7 +178,7 @@ export function MoviesPage() {
                 {movies.isPending || !data
                   ? Array.from({ length: 8 }, (_, i) => (
                       <tr key={i}>
-                        <td colSpan={8} className="px-4 py-3">
+                        <td colSpan={9} className="px-4 py-3">
                           <Skeleton className="h-10 w-full" />
                         </td>
                       </tr>
@@ -184,6 +202,7 @@ export function MoviesPage() {
                         <td className="px-3 py-2.5 tabular-nums text-fg-muted">{m.year || '—'}</td>
                         <td className="px-3 py-2.5 tabular-nums text-fg-muted">{formatRating(m.rating) ?? '—'}</td>
                         <td className="px-3 py-2.5">{hasStream(m) ? <Badge tone="ok">Ready</Badge> : <Badge tone="warn">None</Badge>}</td>
+                        <td className="px-3 py-2.5">{m.is_active ? <Badge tone="ok">Active</Badge> : <Badge tone="warn">Inactive</Badge>}</td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-fg-muted">{formatDate(m.scraped_at)}</td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-fg-muted">{formatDate(m.updated_at)}</td>
                         <td className="px-3 py-2.5 pr-4">
@@ -191,6 +210,9 @@ export function MoviesPage() {
                             <a href={`/movie/${encodeURIComponent(m.tmdb_id)}`} target="_blank" rel="noreferrer" className="rounded-md p-2 text-fg-muted hover:bg-white/5 hover:text-fg" aria-label={`Open ${m.title} on the site`} title="View on site">
                               <ExternalLink className="h-4 w-4" />
                             </a>
+                            <button type="button" disabled={toggle.isPending && toggle.variables?.tmdb_id === m.tmdb_id} onClick={() => toggle.mutate(m)} className="rounded-md p-2 text-fg-muted hover:bg-white/5 hover:text-fg disabled:opacity-50" aria-label={`${m.is_active ? 'Deactivate' : 'Activate'} ${m.title}`} title={m.is_active ? 'Deactivate (hide from site)' : 'Activate (show on site)'}>
+                              {m.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
                             <Link to={`/admin/movies/${encodeURIComponent(m.tmdb_id)}`} className="rounded-md p-2 text-fg-muted hover:bg-white/5 hover:text-fg" aria-label={`Edit ${m.title}`} title="Edit">
                               <Pencil className="h-4 w-4" />
                             </Link>

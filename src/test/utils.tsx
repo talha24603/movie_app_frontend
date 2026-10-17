@@ -68,6 +68,7 @@ export function makeMovie(overrides: Partial<Movie> = {}): Movie {
     player_url: '',
     download_url: '',
     subtitles: [],
+    is_active: true,
     proxied_stream_url: '',
     direct_play_url: '',
     scraped_at: null,

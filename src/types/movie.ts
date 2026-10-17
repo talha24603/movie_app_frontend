@@ -37,6 +37,8 @@ export interface Movie {
   player_url: string
   download_url: string
   subtitles: SubtitleTrack[]
+  /** Admin switch: inactive movies are hidden from the public site. */
+  is_active: boolean
   proxied_stream_url: string
   direct_play_url: string
   scraped_at: string | null
@@ -74,6 +76,8 @@ export interface MovieQuery {
   genre?: string
   source?: string
   has_stream?: boolean
+  /** Honoured for admin sessions only; the default (and every public caller) is active movies only. */
+  status?: 'active' | 'inactive' | 'all'
   sort?: MovieSortField
   order?: SortOrder
 }

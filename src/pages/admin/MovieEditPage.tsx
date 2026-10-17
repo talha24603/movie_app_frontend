@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ExternalLink, Info, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, ExternalLink, Info, Save, Trash2 } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { adminApi } from '@/api/admin'
 import { queryKeys, useFacets, useMovie } from '@/hooks/queries'
@@ -105,6 +105,18 @@ export function MovieEditPage() {
     },
   })
 
+  const toggleActive = useMutation({
+    mutationFn: (active: boolean) => adminApi.setMovieActive(id, active),
+    onSuccess: (updated) => {
+      // Only the status changed: leave any unsaved form edits alone
+      qc.setQueryData(queryKeys.movie(id), (prev: Movie | undefined) => (prev ? { ...prev, is_active: updated.is_active } : updated))
+      qc.invalidateQueries({ queryKey: ['movies', 'list'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      toast.success(`Movie is now ${updated.is_active ? 'active' : 'inactive'}.`)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+
   const [confirmDelete, setConfirmDelete] = useState(false)
   const del = useMutation({
     mutationFn: () => adminApi.deleteMovie(id),
@@ -155,11 +167,21 @@ export function MovieEditPage() {
         description={
           <span className="inline-flex flex-wrap items-center gap-2">
             <Badge>{sourceLabel(movie.source)}</Badge>
+            {movie.is_active ? <Badge tone="ok">Active</Badge> : <Badge tone="warn">Inactive</Badge>}
             <span className="font-mono text-xs">ID {movie.tmdb_id}</span>
           </span>
         }
         actions={
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={toggleActive.isPending}
+              onClick={() => toggleActive.mutate(!movie.is_active)}
+              icon={movie.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            >
+              {movie.is_active ? 'Deactivate' : 'Activate'}
+            </Button>
             <ButtonLink to={`/movie/${encodeURIComponent(movie.tmdb_id)}`} variant="outline" size="sm" target="_blank" icon={<ExternalLink className="h-4 w-4" />}>
               View on site
             </ButtonLink>

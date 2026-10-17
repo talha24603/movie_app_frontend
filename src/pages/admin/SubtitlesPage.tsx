@@ -22,6 +22,16 @@ import type { SubtitleJob, SubtitleJobStatus } from '@/types/admin'
 const PAGE_SIZE = 25
 const STATUS_TONE: Record<SubtitleJobStatus, 'neutral' | 'info' | 'ok' | 'danger'> = { queued: 'neutral', running: 'info', completed: 'ok', failed: 'danger' }
 
+// Why an explicitly requested movie was not queued (app/services/subtitle_jobs.py::_diagnose)
+const SKIP_REASONS: Record<string, string> = {
+  subtitle_exists: 'already generated',
+  scraped_subtitle_exists: 'already scraped',
+  already_queued: 'already queued',
+  no_stream_url: 'no stream',
+  not_found: 'not found',
+  source_mismatch: 'other source',
+}
+
 // Subset of Whisper languages; codes match LANGUAGE_NAMES in app/services/subtitle_tracks.py
 const LANGUAGES = [
   ['en', 'English'], ['ur', 'Urdu'], ['ar', 'Arabic'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'],
@@ -70,7 +80,8 @@ function CreateBatchDialog({ open, onClose }: { open: boolean; onClose: () => vo
         movie_ids: v.movie_ids.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean),
       }),
     onSuccess: (r) => {
-      toast.success(`Batch ${r.batch_id}: ${r.queued} queued, ${r.skipped} skipped.`)
+      const reasons = [...new Set(Object.values(r.skipped_details ?? {}))].map((c) => SKIP_REASONS[c] ?? c.replace(/_/g, ' '))
+      toast.success(`Batch ${r.batch_id}: ${r.queued} queued, ${r.skipped} skipped${reasons.length ? ` (${reasons.join(', ')})` : ''}.`)
       qc.invalidateQueries({ queryKey: ['admin', 'subtitle-jobs'] })
       qc.invalidateQueries({ queryKey: queryKeys.stats })
       reset()
@@ -83,7 +94,7 @@ function CreateBatchDialog({ open, onClose }: { open: boolean; onClose: () => vo
       open={open}
       onClose={() => !create.isPending && onClose()}
       title="Queue subtitle generation"
-      description="Movies that already have a subtitle in this language are skipped."
+      description="Movies that already have a scraped or generated subtitle in this language are skipped."
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={create.isPending}>
@@ -247,6 +258,8 @@ export function SubtitlesPage() {
                             <div className="h-1.5 rounded-full bg-sky-400" style={{ width: `${j.progress}%` }} />
                           </div>
                         </div>
+                      ) : j.status === 'completed' && j.stage === 'skipped_existing' ? (
+                        <span className="text-xs text-fg-subtle">Skipped – subtitle already exists</span>
                       ) : (
                         <span className="text-xs text-fg-subtle">{j.attempts} attempt{j.attempts === 1 ? '' : 's'}</span>
                       )}

@@ -9,6 +9,8 @@ export const adminApi = {
   stats: (signal?: AbortSignal) => request<AdminStats>('/api/admin/stats', { signal }),
   updateMovie: (id: string, body: MovieUpdate) =>
     request<Movie>(`/api/admin/movies/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
+  setMovieActive: (id: string, is_active: boolean) =>
+    request<Movie>(`/api/admin/movies/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { is_active } }),
   deleteMovie: (id: string) => request<void>(`/api/admin/movies/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   users: (signal?: AbortSignal) => request<AdminUser[]>('/api/admin/users', { signal }),
